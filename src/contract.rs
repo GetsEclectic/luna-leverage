@@ -1,6 +1,6 @@
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, to_binary};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Coin, StdError};
 use cw2::set_contract_version;
 
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -40,18 +40,18 @@ pub fn execute(
     match msg {
         ExecuteMsg::Increment {} => try_increment(deps),
         ExecuteMsg::Reset { count } => try_reset(deps, info, count),
-        ExecuteMsg::Hoard {} => try_hoard(deps, _env, info),
+        ExecuteMsg::Hoard {} => try_hoard(info),
     }
 }
 
-pub fn try_hoard(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, StdError> {
+pub fn try_hoard(info: MessageInfo) -> Result<Response, StdError> {
     if info.funds.len() != 1 {
         return Err(StdError::generic_err("must deposit only one type of token"));
     }
 
-    let coins: Vec<Coin> = deps.querier.query_all_balances(&env.contract.address)?;
-    let coins_string: String = coins.into_iter().map(|coin| coin.amount.to_string() + &coin.denom).collect::<Vec<String>>().join(",");
-    Ok(Response::new().add_attribute("method", coins_string))
+    let coin = &info.funds[0];
+    // let coins_string: String = coins.into_iter().map(|coin| coin.amount.to_string() + &coin.denom).collect::<Vec<String>>().join(",");
+    Ok(Response::new().add_attribute("method", coin.amount.to_string() + &coin.denom))
 }
 
 pub fn try_increment(deps: DepsMut) -> Result<Response, StdError> {
@@ -87,9 +87,10 @@ fn query_count(deps: Deps) -> StdResult<CountResponse> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+
+    use super::*;
 
     #[test]
     fn proper_initialization() {
